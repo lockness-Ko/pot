@@ -28,7 +28,7 @@ func main() {
 		// Append the remote address, and the command line, to the log file.
 		io.WriteString(f, fmt.Sprintf("%s %s %s\n", s.User(), s.RemoteAddr(), s.RawCommand()))
 
-		cmd := exec.Command("bash", "-c", "HOME=/root asciinema rec recs/$(cat /dev/urandom| head -n1 | md5sum -z | cut -c -10) -c \"docker run --rm -itu nobody --cpus 0.05 --memory 25Mb --network none minimal\"")
+		cmd := exec.Command("bash", "-c", "HOME=/root LC_ALL=C asciinema rec recs/$(cat /dev/urandom| head -n1 | md5sum -z | cut -c -10) -c \"docker run --rm -itu nobody --cpus 0.05 --memory 25Mb --network none minimal\"")
 		ptyReq, winCh, isPty := s.Pty()
 		if isPty {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("TERM=%s", ptyReq.Term))
@@ -47,7 +47,25 @@ func main() {
 			io.Copy(s, f) // stdout
 			cmd.Wait()
 		} else {
-			io.WriteString(s, "No PTY requested.\n")
+            out := ""
+            switch s.RawCommand() {
+            case "uname -s -m":
+                out = "Linux x86_64\n"
+            case `echo -e \x6F\x6B`:
+                out = "ok\n"
+            case "cat /etc/os-release":
+                out = `PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+NAME="Debian GNU/Linux"
+VERSION_ID="11"
+VERSION="11 (bullseye)"
+VERSION_CODENAME=bullseye
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+`
+            }
+			io.WriteString(s, out)
 			s.Exit(1)
 		}
 	})
